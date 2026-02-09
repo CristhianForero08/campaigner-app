@@ -1,0 +1,805 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Campaigner Enterprise</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://unpkg.com/vue@3/dist/vue.global.js"></script> <!-- Using Vue 3 for speed -->
+</head>
+<body class="bg-slate-50 text-slate-900">
+    <div id="app" class="min-h-screen flex flex-col">
+        <!-- Navbar -->
+        <nav class="bg-slate-900 text-white p-4 shadow-md">
+            <div class="container mx-auto flex justify-between items-center">
+                <h1 class="text-xl font-bold tracking-tight cursor-pointer" @click="currentView = 'dashboard'">Campaigner <span class="text-blue-400">AI</span></h1>
+                <div>
+                    <a href="#" @click.prevent="currentView = 'dashboard'" :class="{'text-blue-300': currentView === 'dashboard', 'hover:text-blue-300': currentView !== 'dashboard'}" class="px-3">Dashboard</a>
+                    <a href="#" @click.prevent="currentView = 'calendar'" :class="{'text-blue-300': currentView === 'calendar', 'hover:text-blue-300': currentView !== 'calendar'}" class="px-3">Calendario</a>
+                </div>
+            </div>
+        </nav>
+
+        <!-- Main Content -->
+        <main class="container mx-auto flex-grow p-6">
+            <!-- View: Dashboard -->
+            <div v-if="currentView === 'dashboard'">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold">Campañas</h2>
+                    <button @click="currentView = 'create'" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-sm transition">
+                        + Nueva Campaña
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-lg shadow border border-slate-200 overflow-hidden">
+                    <table class="min-w-full divide-y divide-slate-200">
+                        <thead class="bg-slate-50">
+                            <tr>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Campaña (Marca/Subcanal)</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Canal</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Fecha Salida</th>
+                                <th class="px-6 py-3 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">Estado</th>
+                                <th class="px-6 py-3 text-right text-xs font-medium text-slate-500 uppercase tracking-wider">Acción</th>
+                            </tr>
+                        </thead>
+                        <tbody class="bg-white divide-y divide-slate-200">
+                            <tr v-for="c in campaigns" :key="c.id" class="hover:bg-slate-50 cursor-pointer" @click="openDetail(c.id)">
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <div class="text-sm font-medium text-slate-900">{{ c.Marca }}</div>
+                                    <div class="text-sm text-slate-500">{{ c.Subcanal }}</div>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full bg-blue-100 text-blue-800">
+                                        {{ c.Canal }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-sm text-slate-500">{{ c.Fecha_Salida }}</td>
+                                <td class="px-6 py-4 whitespace-nowrap">
+                                    <span :class="{'bg-green-100 text-green-800': c.status === 'APPROVED', 'bg-yellow-100 text-yellow-800': c.status === 'DRAFT'}" class="px-2 inline-flex text-xs leading-5 font-semibold rounded-full">
+                                        {{ c.status }}
+                                    </span>
+                                </td>
+                                <td class="px-6 py-4 whitespace-nowrap text-right text-sm font-medium">
+                                    <a href="#" @click.prevent="openDetail(c.id)" class="text-blue-600 hover:text-blue-900">Ver</a>
+                                </td>
+                            </tr>
+                            <tr v-if="campaigns.length === 0">
+                                <td colspan="5" class="px-6 py-8 text-center text-slate-400">No hay campañas. Crea una para comenzar.</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- View: Calendar -->
+            <div v-if="currentView === 'calendar'">
+                <div class="flex justify-between items-center mb-6">
+                    <h2 class="text-2xl font-semibold">Calendario de Salidas</h2>
+                    <div class="flex items-center space-x-4">
+                        <button @click="changeMonth(-1)" class="text-slate-600 hover:text-slate-900">◀</button>
+                        <span class="text-lg font-medium">{{ currentMonthName }} {{ currentYear }}</span>
+                        <button @click="changeMonth(1)" class="text-slate-600 hover:text-slate-900">▶</button>
+                    </div>
+                    <button @click="currentView = 'create'" class="bg-blue-600 hover:bg-blue-700 text-white px-4 py-2 rounded-md shadow-sm transition">
+                        + Nueva Campaña
+                    </button>
+                </div>
+
+                <div class="bg-white rounded-lg shadow ring-1 ring-black ring-opacity-5 overflow-hidden">
+                    <!-- Days Header -->
+                    <div class="grid grid-cols-7 gap-px border-b border-gray-200 bg-gray-50 text-center text-xs font-semibold leading-6 text-gray-700 lg:flex-none">
+                        <div class="bg-white py-2">DOM</div>
+                        <div class="bg-white py-2">LUN</div>
+                        <div class="bg-white py-2">MAR</div>
+                        <div class="bg-white py-2">MIE</div>
+                        <div class="bg-white py-2">JUE</div>
+                        <div class="bg-white py-2">VIE</div>
+                        <div class="bg-white py-2">SAB</div>
+                    </div>
+                    <!-- Calendar Grid -->
+                    <div class="flex bg-gray-200 text-xs leading-6 text-gray-700 lg:flex-auto">
+                        <div class="w-full grid grid-cols-7 grid-rows-5 gap-px">
+                            <!-- Empty cells for padding -->
+                            <div v-for="n in paddingDays" :key="'pad-'+n" class="relative bg-gray-50 px-3 py-2 text-gray-500"></div>
+                            
+                            <!-- Day cells -->
+                            <div v-for="day in daysInMonth" :key="day" class="relative bg-white px-3 py-2 min-h-[120px] hover:bg-slate-50 transition">
+                                <time :datetime="formatDateForSys(day)" :class="{'flex h-6 w-6 items-center justify-center rounded-full bg-blue-600 font-semibold text-white': isToday(day)}" class="ml-auto">{{ day }}</time>
+                                <ol class="mt-2 text-left">
+                                    <li v-for="event in getEventsForDay(day)" :key="event.id" class="mb-1">
+                                        <a href="#" @click.prevent="openDetail(event.id)" class="group flex flex-col rounded-md p-2 text-xs hover:bg-blue-50 cursor-pointer border border-transparent hover:border-blue-100">
+                                            <p class="font-semibold text-blue-700 truncate">{{ event.Marca }}</p>
+                                            <p class="text-slate-500 truncate text-[10px]">{{ event.Canal }}</p>
+                                        </a>
+                                    </li>
+                                </ol>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- View: Create -->
+            <div v-if="currentView === 'create'" class="max-w-2xl mx-auto">
+                <div class="flex items-center mb-6">
+                    <button @click="currentView = 'dashboard'" class="text-slate-500 hover:text-slate-700 mr-2">← Volver</button>
+                    <h2 class="text-2xl font-semibold">Nueva Campaña</h2>
+                </div>
+                
+                <form @submit.prevent="createCampaign" class="bg-white shadow rounded-lg p-6 space-y-4">
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Fecha Solicitud</label>
+                            <input v-model="form.Fecha_Solicitud" type="date" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Fecha Salida</label>
+                            <input v-model="form.Fecha_Salida" type="date" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border" required>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Marca</label>
+                            <input v-model="form.Marca" type="text" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border" placeholder="Ej: Samsung" required>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Categoría</label>
+                            <select v-model="form.Categoria" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border">
+                                <option>Electro</option><option>Belleza</option><option>Deco</option>
+                                <option>Moda</option><option>Deportes</option><option>Colchones</option><option>Calzado</option><option>Otros</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Tipo de Campaña</label>
+                            <select v-model="form.Tipo" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border">
+                                <option>Monetizado</option>
+                                <option>Casa</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Segmento Objetivo</label>
+                            <input v-model="form.Segmento" type="text" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border" placeholder="Ej: Hombres 25-40" required>
+                        </div>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Fecha Legal / Fin Promoción <span class="text-xs text-gray-500">(Opcional)</span></label>
+                            <input v-model="form.Fecha_Legal" type="date" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border">
+                        </div>
+                        <div class="flex items-end">
+                             <!-- Spacer or additional field could go here -->
+                        </div>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Comentarios Adicionales <span class="text-xs text-gray-500">(Opcional)</span></label>
+                        <textarea v-model="form.Comentario" rows="2" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border" placeholder="Notas internas sobre la campaña..."></textarea>
+                    </div>
+
+                    <div class="grid grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Canal</label>
+                            <select v-model="form.Canal" @change="updateSubchannels" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border">
+                                <option>Email</option>
+                                <option>Trigger</option>
+                                <option>SMS</option>
+                                <option>Whatsapp</option>
+                                <option>Push</option>
+                                <option>App</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Subcanal</label>
+                            <select v-model="form.Subcanal" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border" required>
+                                <option disabled value="">Selecciona un subcanal</option>
+                                <option v-for="sub in availableSubchannels" :key="sub" :value="sub">{{ sub }}</option>
+                            </select>
+                        </div>
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Link Comercial (COM)</label>
+                        <input v-model="form.Link_COM" type="url" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border" required>
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Link Imagen Base</label>
+                        <input v-model="form.Link_Imagen" type="url" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border" placeholder="https://...">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700">Total Envíos</label>
+                        <input v-model.number="form.Total_Envios" type="number" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border" value="5000">
+                    </div>
+
+                    <div class="flex items-center">
+                        <input v-model="form.OK_Para_Envio" type="checkbox" class="h-4 w-4 text-blue-600 rounded">
+                        <label class="ml-2 block text-sm text-slate-900">¿OK para envío? (Requerido para IA)</label>
+                    </div>
+
+                    <div class="pt-4">
+                        <button type="submit" class="w-full bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Crear Campaña</button>
+                    </div>
+                </form>
+            </div>
+
+            <!-- View: Detail -->
+            <div v-if="currentView === 'detail' && selectedCampaign" class="max-w-4xl mx-auto">
+                <div class="flex items-center mb-6 justify-between">
+                    <div class="flex items-center">
+                        <button @click="currentView = 'dashboard'" class="text-slate-500 hover:text-slate-700 mr-2">← Volver</button>
+                        <h2 class="text-2xl font-semibold">{{ selectedCampaign.Marca }} - {{ selectedCampaign.Subcanal }}</h2>
+                        <span class="ml-4 px-2 py-1 bg-slate-200 text-slate-700 text-xs rounded">{{ selectedCampaign.id }}</span>
+                    </div>
+                    <div class="space-x-2">
+                        <button @click="toggleEditMode" class="bg-gray-200 hover:bg-gray-300 text-gray-800 px-3 py-1 rounded shadow-sm text-sm font-medium">
+                            {{ isEditing ? 'Cancelar Edición' : 'Editar Campaña' }}
+                        </button>
+                        <button v-if="!isEditing" @click="togglePause" :class="{'bg-yellow-500 hover:bg-yellow-600': selectedCampaign.status !== 'PAUSED', 'bg-green-500 hover:bg-green-600': selectedCampaign.status === 'PAUSED'}" class="text-white px-3 py-1 rounded shadow-sm text-sm font-medium">
+                            {{ selectedCampaign.status === 'PAUSED' ? '▶ Reanudar' : '⏸ Pausar' }}
+                        </button>
+                    </div>
+                </div>
+
+                <!-- Edit Mode Form -->
+                <div v-if="isEditing" class="bg-white shadow rounded-lg p-6 mb-6 border-2 border-blue-100">
+                    <h3 class="text-lg font-bold text-slate-700 mb-4">Editar Campaña</h3>
+                    <form @submit.prevent="saveCampaignUpdates" class="space-y-4">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700">Fecha Solicitud</label>
+                                <input v-model="form.Fecha_Solicitud" type="date" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700">Fecha Salida</label>
+                                <input v-model="form.Fecha_Salida" type="date" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border" required>
+                            </div>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700">Marca</label>
+                                <input v-model="form.Marca" type="text" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700">Categoría</label>
+                                <select v-model="form.Categoria" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border">
+                                    <option>Electro</option><option>Belleza</option><option>Deco</option>
+                                    <option>Moda</option><option>Deportes</option><option>Colchones</option><option>Calzado</option><option>Otros</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Segmento Objetivo</label>
+                            <input v-model="form.Segmento" type="text" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border" placeholder="Ej: Hombres 25-40 interesados en tecnología" required>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700">Canal</label>
+                                <select v-model="form.Canal" @change="updateSubchannels" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border">
+                                    <option>Email</option><option>Trigger</option><option>SMS</option><option>Whatsapp</option><option>Push</option><option>App</option>
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700">Subcanal</label>
+                                <select v-model="form.Subcanal" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border" required>
+                                    <option disabled value="">Selecciona un subcanal</option>
+                                    <option v-for="sub in availableSubchannels" :key="sub" :value="sub">{{ sub }}</option>
+                                </select>
+                            </div>
+                        </div>
+                        
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Link Comercial (COM)</label>
+                            <input v-model="form.Link_COM" type="url" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border" required>
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Link Imagen Base</label>
+                            <input v-model="form.Link_Imagen" type="url" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border">
+                        </div>
+
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700">Total Envíos</label>
+                            <input v-model.number="form.Total_Envios" type="number" class="mt-1 block w-full rounded-md border-slate-300 shadow-sm p-2 border">
+                        </div>
+
+                        <div class="flex items-center">
+                            <input v-model="form.OK_Para_Envio" type="checkbox" class="h-4 w-4 text-blue-600 rounded">
+                            <label class="ml-2 block text-sm text-slate-900">¿OK para envío?</label>
+                        </div>
+
+                        <div class="pt-4 flex justify-end space-x-3">
+                            <button type="button" @click="isEditing = false" class="bg-gray-300 hover:bg-gray-400 text-gray-800 font-bold py-2 px-4 rounded">Cancelar</button>
+                            <button type="submit" class="bg-blue-600 hover:bg-blue-700 text-white font-bold py-2 px-4 rounded">Guardar Cambios</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div v-else class="grid grid-cols-3 gap-6">
+                    <!-- Left: Metadata -->
+                    <div class="col-span-1 space-y-6">
+                        <div class="bg-white p-4 rounded shadow">
+                            <h3 class="font-bold text-slate-700 mb-2">Detalles</h3>
+                            <div class="text-sm space-y-2">
+                                <div class="flex justify-between"><span>Canal:</span> <span class="font-medium">{{ selectedCampaign.Canal }}</span></div>
+                                <div class="flex justify-between"><span>Salida:</span> <span class="font-medium">{{ selectedCampaign.Fecha_Salida }}</span></div>
+                                <div class="flex justify-between"><span>Categoría:</span> <span class="font-medium">{{ selectedCampaign.Categoria }}</span></div>
+                                <div class="pt-2 border-t">
+                                    <span class="block text-xs text-slate-500 uppercase">Segmento</span>
+                                    <span class="font-medium">{{ selectedCampaign.Segmento }}</span>
+                                </div>
+                                <div class="flex justify-between pt-2 border-t">
+                                    <span class="text-sm">Tipo:</span>
+                                    <span :class="{'bg-purple-100 text-purple-800': selectedCampaign.Tipo === 'Monetizado', 'bg-gray-100 text-gray-800': selectedCampaign.Tipo === 'Casa'}" class="text-xs font-semibold px-2 py-0.5 rounded">{{ selectedCampaign.Tipo }}</span>
+                                </div>
+                                <div v-if="selectedCampaign.Fecha_Legal" class="pt-2 border-t text-sm">
+                                    <span class="block text-xs text-slate-500 uppercase">Validez (Legal)</span>
+                                    <span class="font-medium text-slate-700">Hasta: {{ selectedCampaign.Fecha_Legal }}</span>
+                                </div>
+                                <div v-if="selectedCampaign.Comentario" class="pt-2 border-t text-sm bg-slate-50 p-2 rounded mt-2">
+                                    <span class="block text-xs text-slate-500 uppercase font-bold">Comentarios</span>
+                                    <p class="text-slate-600 italic">{{ selectedCampaign.Comentario }}</p>
+                                </div>
+                                <div class="flex justify-between pt-2 border-t"><span>Estado:</span> <span :class="{'bg-yellow-100 text-yellow-800': selectedCampaign.status === 'PAUSED', 'bg-green-100 text-green-800': selectedCampaign.status === 'APPROVED'}" class="font-medium px-2 rounded">{{ selectedCampaign.status }}</span></div>
+                                <div class="flex justify-between mt-2 pt-2 border-t"><span>Envíos:</span> <span class="font-medium">{{ selectedCampaign.Total_Envios }}</span></div>
+                                <div v-if="selectedCampaign.Link_Imagen" class="mt-2 text-xs truncate text-blue-500"><a :href="selectedCampaign.Link_Imagen" target="_blank">Ver Imagen 🔗</a></div>
+                            </div>
+                        </div>
+
+                        <div class="bg-white p-4 rounded shadow">
+                            <h3 class="font-bold text-slate-700 mb-2">Flujo de Trabajo</h3>
+                            <div class="space-y-2">
+                                <button @click="runAgent('copywriter')" :disabled="loading" class="w-full text-left px-3 py-2 rounded border hover:bg-slate-50 flex justify-between items-center transition" :class="{'border-l-4 border-l-blue-500': selectedCampaign.agent_outputs?.copywriter?.success}">
+                                    <span>1. Agente Redactor (IA)</span>
+                                    <span v-if="selectedCampaign.agent_outputs?.copywriter?.success" class="text-green-500">✔</span>
+                                </button>
+                                <button @click="runAgent('brand_guardian')" :disabled="loading" class="w-full text-left px-3 py-2 rounded border hover:bg-slate-50 flex justify-between items-center transition" :class="{'border-l-4 border-l-purple-500': selectedCampaign.agent_outputs?.brand_guardian?.success}">
+                                    <span>2. Guardián de Marca</span>
+                                    <span v-if="selectedCampaign.agent_outputs?.brand_guardian?.success" class="text-green-500">✔</span>
+                                </button>
+                                <button @click="runAgent('legal_compliance')" :disabled="loading" class="w-full text-left px-3 py-2 rounded border hover:bg-slate-50 flex justify-between items-center transition" :class="{'border-l-4 border-l-gray-500': selectedCampaign.agent_outputs?.legal_compliance?.success}">
+                                    <span>3. Legal / Cumplimiento</span>
+                                    <span v-if="selectedCampaign.agent_outputs?.legal_compliance?.success" class="text-green-500">✔</span>
+                                </button>
+                                <button @click="runAgent('designer')" :disabled="loading" class="w-full text-left px-3 py-2 rounded border hover:bg-slate-50 flex justify-between items-center transition" :class="{'border-l-4 border-l-pink-500': selectedCampaign.agent_outputs?.designer?.success}">
+                                    <span>4. Diseñador</span>
+                                    <span v-if="selectedCampaign.agent_outputs?.designer?.success" class="text-green-500">✔</span>
+                                </button>
+                                <button @click="runAgent('campaign_qa')" :disabled="loading" class="w-full text-left px-3 py-2 rounded border hover:bg-slate-50 flex justify-between items-center transition" :class="{'border-l-4 border-l-orange-500': selectedCampaign.agent_outputs?.campaign_qa?.success}">
+                                    <span>5. QA Campaña</span>
+                                    <span v-if="selectedCampaign.agent_outputs?.campaign_qa?.success" class="text-green-500">✔</span>
+                                </button>
+                            </div>
+
+                            <h3 class="font-bold text-slate-700 mt-6 mb-2">Ingeniería & Aprobación</h3>
+                            <div class="space-y-2">
+                                <button @click="runAgent('crm_engineer')" :disabled="loading" class="w-full text-left px-3 py-2 rounded border hover:bg-slate-50 flex justify-between items-center transition" :class="{'border-l-4 border-l-cyan-500': selectedCampaign.agent_outputs?.crm_engineer?.success}">
+                                    <span>6. Ingeniero CRM (Revisión)</span>
+                                    <span v-if="selectedCampaign.agent_outputs?.crm_engineer?.success" class="text-green-500">✔</span>
+                                </button>
+                                <button @click="runAgent('audience_optimizer')" :disabled="loading" class="w-full text-left px-3 py-2 rounded border hover:bg-slate-50 flex justify-between items-center transition" :class="{'border-l-4 border-l-teal-500': selectedCampaign.agent_outputs?.audience_optimizer?.success}">
+                                    <span>7. Segmentación / Timing</span>
+                                    <span v-if="selectedCampaign.agent_outputs?.audience_optimizer?.success" class="text-green-500">✔</span>
+                                </button>
+                                
+                                <button @click="approveCampaign" :disabled="selectedCampaign.status === 'APPROVED'" class="w-full mt-4 bg-green-600 hover:bg-green-700 disabled:bg-slate-300 disabled:text-slate-500 text-white font-bold py-2 rounded shadow transition">
+                                    {{ selectedCampaign.status === 'APPROVED' ? '✅ Aprobado para Envío' : '🚀 Aprobar Envío' }}
+                                </button>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Right: Output -->
+                    <div class="col-span-2 space-y-6">
+                        
+                        <!-- 1. Copywriter -->
+                        <div v-if="selectedCampaign.agent_outputs?.copywriter" class="bg-white rounded shadow border-l-4 border-blue-500 overflow-hidden">
+                            <div class="bg-slate-50 px-4 py-2 border-b flex justify-between items-center cursor-pointer" @click="activeSections.copy = !activeSections.copy">
+                                <div class="flex items-center space-x-2">
+                                    <h3 class="font-bold text-slate-700">1. Resultado Agente Redactor</h3>
+                                    <span class="text-xs font-semibold px-2 py-0.5 rounded" :class="selectedCampaign.agent_outputs.copywriter.governance.confidence_score >= 0.7 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
+                                        Score: {{ selectedCampaign.agent_outputs.copywriter.governance.confidence_score }}
+                                    </span>
+                                </div>
+                                <span class="text-xs text-slate-500">{{ activeSections.copy ? '▼' : '▶' }}</span>
+                            </div>
+                            <div v-show="activeSections.copy" class="p-4">
+                                <div class="mb-2 text-sm italic text-gray-600">"{{ selectedCampaign.agent_outputs.copywriter.governance.explanation }}"</div>
+                                <div class="p-3 bg-gray-50 border rounded text-sm whitespace-pre-wrap">{{ selectedCampaign.agent_outputs.copywriter.data.content.subject || selectedCampaign.agent_outputs.copywriter.data.content.body }}</div>
+                                <div class="mt-4 pt-3 border-t flex justify-end">
+                                    <button @click.stop="runAgent('copywriter')" :disabled="loading" class="text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded shadow-sm transition">
+                                        ↻ Re-ejecutar
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- 2. Brand -->
+                        <div v-if="selectedCampaign.agent_outputs?.brand_guardian" class="bg-white rounded shadow border-l-4 border-purple-500 overflow-hidden">
+                             <div class="bg-slate-50 px-4 py-2 border-b flex justify-between items-center cursor-pointer" @click="activeSections.brand = !activeSections.brand">
+                                <div class="flex items-center space-x-2">
+                                    <h3 class="font-bold text-slate-700">2. Guardián de Marca</h3>
+                                    <span class="text-xs font-semibold px-2 py-0.5 rounded" :class="selectedCampaign.agent_outputs.brand_guardian.governance.confidence_score >= 0.7 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                                        Score: {{ selectedCampaign.agent_outputs.brand_guardian.governance.confidence_score }}
+                                    </span>
+                                </div>
+                                <span class="text-xs text-slate-500">{{ activeSections.brand ? '▼' : '▶' }}</span>
+                             </div>
+                             <div v-show="activeSections.brand" class="p-4 text-sm">
+                                <p class="text-gray-700">{{ selectedCampaign.agent_outputs.brand_guardian.governance.explanation }}</p>
+                                <div class="mt-2 grid grid-cols-2 gap-2 text-xs">
+                                    <div class="bg-green-50 p-2 rounded">Tono Correcto: {{ selectedCampaign.agent_outputs.brand_guardian.data.validation?.tone_match ? 'SÍ' : 'NO' }}</div>
+                                    <div class="bg-red-50 p-2 rounded">Palabras Prohibidas: {{ selectedCampaign.agent_outputs.brand_guardian.data.validation?.forbidden_words_found?.length || 0 }}</div>
+                                </div>
+                                <div class="mt-4 pt-3 border-t flex justify-end">
+                                    <button @click.stop="runAgent('brand_guardian')" :disabled="loading" class="text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded shadow-sm transition">
+                                        ↻ Re-ejecutar
+                                    </button>
+                                </div>
+                             </div>
+                        </div>
+
+                        <!-- 3. Legal -->
+                        <div v-if="selectedCampaign.agent_outputs?.legal_compliance" class="bg-white rounded shadow border-l-4 border-gray-500 overflow-hidden">
+                             <div class="bg-slate-50 px-4 py-2 border-b flex justify-between items-center cursor-pointer" @click="activeSections.legal = !activeSections.legal">
+                                <div class="flex items-center space-x-2">
+                                    <h3 class="font-bold text-slate-700">3. Legal / Cumplimiento</h3>
+                                    <span class="text-xs font-semibold px-2 py-0.5 rounded" :class="selectedCampaign.agent_outputs.legal_compliance.governance.confidence_score >= 0.8 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                                        Score: {{ selectedCampaign.agent_outputs.legal_compliance.governance.confidence_score }}
+                                    </span>
+                                </div>
+                                <span class="text-xs text-slate-500">{{ activeSections.legal ? '▼' : '▶' }}</span>
+                             </div>
+                             <div v-show="activeSections.legal" class="p-4 text-sm">
+                                <p class="text-gray-700">{{ selectedCampaign.agent_outputs.legal_compliance.governance.explanation }}</p>
+                                <div class="mt-2 text-xs bg-gray-50 p-2 rounded">
+                                    Disclaimers: {{ selectedCampaign.agent_outputs.legal_compliance.data.compliance?.required_disclaimers?.length || 0 }} requeridos
+                                </div>
+                                <div class="mt-4 pt-3 border-t flex justify-end">
+                                    <button @click.stop="runAgent('legal_compliance')" :disabled="loading" class="text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded shadow-sm transition">
+                                        ↻ Re-ejecutar
+                                    </button>
+                                </div>
+                             </div>
+                        </div>
+
+                        <!-- 4. Designer -->
+                        <div v-if="selectedCampaign.agent_outputs?.designer" class="bg-white rounded shadow border-l-4 border-pink-500 overflow-hidden">
+                             <div class="bg-slate-50 px-4 py-2 border-b flex justify-between items-center cursor-pointer" @click="activeSections.design = !activeSections.design">
+                                <div class="flex items-center space-x-2">
+                                    <h3 class="font-bold text-slate-700">4. Diseñador</h3>
+                                    <span class="text-xs font-semibold px-2 py-0.5 rounded" :class="selectedCampaign.agent_outputs.designer.governance.confidence_score >= 0.8 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
+                                        Score: {{ selectedCampaign.agent_outputs.designer.governance.confidence_score }}
+                                    </span>
+                                </div>
+                                <span class="text-xs text-slate-500">{{ activeSections.design ? '▼' : '▶' }}</span>
+                             </div>
+                             <div v-show="activeSections.design" class="p-4 text-sm">
+                                <p class="mb-2">{{ selectedCampaign.agent_outputs.designer.governance.explanation }}</p>
+                                <div class="flex space-x-2">
+                                    <div v-for="color in selectedCampaign.agent_outputs.designer.data.design_specs.palette" :key="color" :style="{backgroundColor: color}" class="w-8 h-8 rounded-full border shadow-sm" :title="color"></div>
+                                </div>
+                                <div class="mt-2 text-xs text-slate-500">Diseño: {{ selectedCampaign.agent_outputs.designer.data.design_specs.layout_type }}</div>
+                                <div class="mt-4 pt-3 border-t flex justify-end">
+                                    <button @click.stop="runAgent('designer')" :disabled="loading" class="text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded shadow-sm transition">
+                                        ↻ Re-ejecutar
+                                    </button>
+                                </div>
+                             </div>
+                        </div>
+
+                        <!-- 5. QA -->
+                        <div v-if="selectedCampaign.agent_outputs?.campaign_qa" class="bg-white rounded shadow border-l-4 border-orange-500 overflow-hidden">
+                             <div class="bg-slate-50 px-4 py-2 border-b flex justify-between items-center cursor-pointer" @click="activeSections.qa = !activeSections.qa">
+                                <div class="flex items-center space-x-2">
+                                    <h3 class="font-bold text-slate-700">5. QA Campaña</h3>
+                                    <span class="text-xs font-semibold px-2 py-0.5 rounded" :class="selectedCampaign.agent_outputs.campaign_qa.governance.confidence_score >= 0.8 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                                        Score: {{ selectedCampaign.agent_outputs.campaign_qa.governance.confidence_score }}
+                                    </span>
+                                </div>
+                                <span class="text-xs text-slate-500">{{ activeSections.qa ? '▼' : '▶' }}</span>
+                             </div>
+                             <div v-show="activeSections.qa" class="p-4 text-sm">
+                                <div class="grid grid-cols-2 gap-2">
+                                    <div v-for="(val, key) in selectedCampaign.agent_outputs.campaign_qa.data.checklist" :key="key" class="flex justify-between p-2 rounded" :class="val ? 'bg-green-50 text-green-700' : 'bg-red-50 text-red-700'">
+                                        <span>{{ key }}</span>
+                                        <span>{{ val ? 'PASS' : 'FAIL' }}</span>
+                                    </div>
+                                </div>
+                                <div class="mt-4 pt-3 border-t flex justify-end">
+                                    <button @click.stop="runAgent('campaign_qa')" :disabled="loading" class="text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded shadow-sm transition">
+                                        ↻ Re-ejecutar
+                                    </button>
+                                </div>
+                             </div>
+                        </div>
+
+                        <!-- 6. CRM Engineer -->
+                        <div v-if="selectedCampaign.agent_outputs?.crm_engineer" class="bg-white rounded shadow border-l-4 border-cyan-500 overflow-hidden">
+                             <div class="bg-slate-50 px-4 py-2 border-b flex justify-between items-center cursor-pointer" @click="activeSections.crm = !activeSections.crm">
+                                <div class="flex items-center space-x-2">
+                                    <h3 class="font-bold text-slate-700">6. Validación Ingeniero CRM</h3>
+                                    <span class="text-xs font-semibold px-2 py-0.5 rounded" :class="selectedCampaign.agent_outputs.crm_engineer.governance.confidence_score >= 0.7 ? 'bg-green-100 text-green-800' : 'bg-red-100 text-red-800'">
+                                        Score: {{ selectedCampaign.agent_outputs.crm_engineer.governance.confidence_score }}
+                                    </span>
+                                </div>
+                                <span class="text-xs text-slate-500">{{ activeSections.crm ? '▼' : '▶' }}</span>
+                             </div>
+                             <div v-show="activeSections.crm" class="p-4 text-sm">
+                                <p class="font-medium text-slate-900">{{ selectedCampaign.agent_outputs.crm_engineer.governance.explanation }}</p>
+                                <div class="mt-2 grid grid-cols-2 gap-4 text-xs text-slate-600">
+                                    <div>Tamaño Audiencia: <strong class="text-slate-900">{{ selectedCampaign.agent_outputs.crm_engineer.data.validation.audience_size }}</strong></div>
+                                    <div>Calidad Datos: <strong class="text-slate-900">{{ selectedCampaign.agent_outputs.crm_engineer.data.validation.data_quality_score * 100 }}%</strong></div>
+                                </div>
+                                <div class="mt-4 pt-3 border-t flex justify-end">
+                                    <button @click.stop="runAgent('crm_engineer')" :disabled="loading" class="text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded shadow-sm transition">
+                                        ↻ Re-ejecutar
+                                    </button>
+                                </div>
+                             </div>
+                        </div>
+
+                        <!-- 7. Optimizer -->
+                        <div v-if="selectedCampaign.agent_outputs?.audience_optimizer" class="bg-white rounded shadow border-l-4 border-teal-500 overflow-hidden">
+                             <div class="bg-slate-50 px-4 py-2 border-b flex justify-between items-center cursor-pointer" @click="activeSections.opt = !activeSections.opt">
+                                <div class="flex items-center space-x-2">
+                                    <h3 class="font-bold text-slate-700">7. Segmentación / Timing</h3>
+                                    <span class="text-xs font-semibold px-2 py-0.5 rounded" :class="selectedCampaign.agent_outputs.audience_optimizer.governance.confidence_score >= 0.8 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'">
+                                        Score: {{ selectedCampaign.agent_outputs.audience_optimizer.governance.confidence_score }}
+                                    </span>
+                                </div>
+                                <span class="text-xs text-slate-500">{{ activeSections.opt ? '▼' : '▶' }}</span>
+                             </div>
+                             <div v-show="activeSections.opt" class="p-4 text-sm">
+                                <div class="flex items-center space-x-4 mb-2">
+                                    <div class="text-center">
+                                        <div class="text-xs text-slate-500">Original</div>
+                                        <div class="font-bold line-through text-red-400">{{ selectedCampaign.agent_outputs.audience_optimizer.data.optimization.original_audience }}</div>
+                                    </div>
+                                    <div class="text-xl font-bold text-slate-300">→</div>
+                                    <div class="text-center">
+                                        <div class="text-xs text-slate-500">Optimizado</div>
+                                        <div class="font-bold text-green-600 text-lg">{{ selectedCampaign.agent_outputs.audience_optimizer.data.optimization.optimized_audience }}</div>
+                                    </div>
+                                </div>
+                                <div class="bg-blue-50 p-2 rounded text-xs text-blue-800">
+                                    <strong>Recomendación:</strong> Enviar a las {{ selectedCampaign.agent_outputs.audience_optimizer.data.optimization.optimal_send_time.replace('T', ' ') }}
+                                </div>
+                                <div class="mt-4 pt-3 border-t flex justify-end">
+                                    <button @click.stop="runAgent('audience_optimizer')" :disabled="loading" class="text-xs bg-white border border-slate-300 hover:bg-slate-50 text-slate-600 px-3 py-1 rounded shadow-sm transition">
+                                        ↻ Re-ejecutar
+                                    </button>
+                                </div>
+                             </div>
+                        </div>
+
+
+                        <div v-if="!selectedCampaign.agent_outputs || Object.keys(selectedCampaign.agent_outputs).length === 0" class="bg-slate-50 border-2 border-dashed border-slate-200 rounded p-8 text-center text-slate-400">
+                            No active workflow data. Start by running the Copywriter agent.
+                        </div>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <script>
+        const { createApp } = Vue
+
+        const subchannelMap = {
+            'Email': ['Email Exclusivo', 'Email Compartido', 'Pata Email (Footer)', 'Email-Form'],
+            'Trigger': ['Trigger Agradecimiento', 'Trigger Navegación / Carrito', 'Trigger Recompra'],
+            'SMS': ['SMS Estándar'],
+            'Whatsapp': ['WhatsApp Estándar', 'WA Carrusel', 'Canal Difusión WA', 'WhatsApp Trigger'],
+            'Push': ['Push Estándar', 'Push Imagen', 'Push Carrusell'],
+            'App': ['App Notificaciones', 'Web Push']
+        };
+
+        const initialForm = {
+            Fecha_Solicitud: new Date().toISOString().split('T')[0],
+            Fecha_Salida: new Date(Date.now() + 86400000).toISOString().split('T')[0],
+            Canal: 'Email',
+            Subcanal: '',
+            Marca: '',
+            Categoria: 'Electro',
+            Tipo: 'Monetizado',
+            Segmento: '',
+            Fecha_Legal: null,
+            Comentario: '',
+            Total_Envios: 5000,
+            OK_Para_Envio: true,
+            Link_COM: 'https://',
+            Link_Imagen: ''
+        };
+
+        createApp({
+            data() {
+                return {
+                    currentView: 'dashboard', // dashboard, create, detail, calendar
+                    campaigns: [],
+                    selectedCampaign: null,
+                    loading: false,
+                    currentAgent: null,
+                    activeSections: { 
+                        copy: true, 
+                        brand: true, 
+                        legal: true, 
+                        design: true, 
+                        qa: true, 
+                        crm: true, 
+                        opt: true 
+                    },
+                    isEditing: false,
+                    availableSubchannels: subchannelMap['Email'],
+                    form: { ...initialForm },
+                    // Calendar State
+                    currentDate: new Date()
+                }
+            },
+            computed: {
+                currentYear() { return this.currentDate.getFullYear(); },
+                currentMonth() { return this.currentDate.getMonth(); },
+                currentMonthName() { 
+                    return new Intl.DateTimeFormat('es-ES', { month: 'long' }).format(this.currentDate).toUpperCase(); 
+                },
+                daysInMonth() {
+                    return new Date(this.currentYear, this.currentMonth + 1, 0).getDate();
+                },
+                paddingDays() {
+                    // 0 = Sunday, 1 = Monday...
+                    return new Date(this.currentYear, this.currentMonth, 1).getDay();
+                }
+            },
+            mounted() {
+                this.fetchCampaigns()
+            },
+            methods: {
+                updateSubchannels() {
+                    this.availableSubchannels = subchannelMap[this.form.Canal] || [];
+                    // Only reset subchannel if it's not in the new list (to avoid clearing on edit load)
+                    if (!this.availableSubchannels.includes(this.form.Subcanal)) {
+                        this.form.Subcanal = '';
+                    }
+                },
+                async fetchCampaigns() {
+                    const res = await fetch('/api/v1/campaigns')
+                    this.campaigns = await res.json()
+                },
+                async createCampaign() {
+                    const res = await fetch('/api/v1/campaigns', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.form)
+                    })
+                    if (res.ok) {
+                        this.fetchCampaigns()
+                        this.currentView = 'dashboard'
+                        this.form = { ...initialForm }
+                    } else {
+                        alert('Error creando campaña')
+                    }
+                },
+                async openDetail(id) {
+                    const res = await fetch(`/api/v1/campaigns/${id}`)
+                    this.selectedCampaign = await res.json()
+                    this.currentView = 'detail'
+                    this.isEditing = false;
+                },
+                toggleEditMode() {
+                    if (!this.isEditing) {
+                        // Enter Edit Mode: Clone data to form
+                        this.form = JSON.parse(JSON.stringify(this.selectedCampaign));
+                        // Ensure subchannels are loaded
+                        this.availableSubchannels = subchannelMap[this.form.Canal] || [];
+                        this.isEditing = true;
+                    } else {
+                        this.isEditing = false;
+                    }
+                },
+                async saveCampaignUpdates() {
+                   const res = await fetch(`/api/v1/campaigns/${this.selectedCampaign.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(this.form)
+                    });
+                    
+                    if (res.ok) {
+                        this.selectedCampaign = await res.json();
+                        this.isEditing = false;
+                        this.fetchCampaigns(); // Refresh list background
+                    } else {
+                        alert('Error al guardar cambios');
+                    }
+                },
+                async togglePause() {
+                    const newStatus = this.selectedCampaign.status === 'PAUSED' ? 'DRAFT' : 'PAUSED';
+                    const updated = { ...this.selectedCampaign, status: newStatus };
+                    
+                    const res = await fetch(`/api/v1/campaigns/${this.selectedCampaign.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updated)
+                    });
+
+                    if (res.ok) {
+                        this.selectedCampaign = await res.json();
+                        this.fetchCampaigns();
+                    } else {
+                        alert('Error al actualizar estado');
+                    }
+                },
+                async runAgent(agentName) {
+                    this.loading = true
+                    try {
+                        const res = await fetch(`/api/v1/agents/${agentName}/execute`, {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                campaign_id: this.selectedCampaign.id,
+                                mode: 'STANDARD'
+                            })
+                        })
+                        if (res.ok) {
+                            // Refresh detail
+                            await this.openDetail(this.selectedCampaign.id)
+                        } else {
+                            alert('La ejecución falló')
+                        }
+                    } finally {
+                        this.loading = false
+                    }
+                },
+                // Calendar Methods
+                changeMonth(delta) {
+                    this.currentDate = new Date(this.currentDate.setMonth(this.currentDate.getMonth() + delta));
+                },
+                formatDateForSys(day) {
+                    // Returns YYYY-MM-DD for comparison
+                    const year = this.currentYear;
+                    const month = String(this.currentMonth + 1).padStart(2, '0');
+                    const d = String(day).padStart(2, '0');
+                    return `${year}-${month}-${d}`;
+                },
+                isToday(day) {
+                    const today = new Date();
+                    return day === today.getDate() && 
+                           this.currentMonth === today.getMonth() && 
+                           this.currentYear === today.getFullYear();
+                },
+                getEventsForDay(day) {
+                    const dateStr = this.formatDateForSys(day);
+                    return this.campaigns.filter(c => c.Fecha_Salida === dateStr);
+                },
+                async approveCampaign() {
+                    const confirmed = confirm("¿Estás seguro de aprobar esta campaña para envío?");
+                    if (!confirmed) return;
+
+                    const updated = { ...this.selectedCampaign, status: 'APPROVED' };
+                    
+                    const res = await fetch(`/api/v1/campaigns/${this.selectedCampaign.id}`, {
+                        method: 'PUT',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify(updated)
+                    });
+
+                    if (res.ok) {
+                        this.selectedCampaign = await res.json();
+                        this.fetchCampaigns();
+                        alert("¡Campaña Aprobada! 🚀");
+                    } else {
+                        alert('Error al aprobar campaña');
+                    }
+                }
+            }
+        }).mount('#app')
+    </script>
+</body>
+</html>
