@@ -1,4 +1,5 @@
 import sqlite3
+import os
 import json
 from typing import List, Optional
 from datetime import date
@@ -8,8 +9,17 @@ from campaigner_core.core.logging import get_logger
 logger = get_logger("INFRA.PERSISTENCE")
 
 class CampaignRepository:
-    def __init__(self, db_path: str = "campaigner.db"):
-        self.db_path = db_path
+    def __init__(self, db_path: str = None):
+        if db_path is None:
+            # Check if running in Vercel environment
+            if os.environ.get("VERCEL"):
+                self.db_path = "/tmp/campaigner.db"
+                logger.info(f"Running in Vercel, using ephemeral DB at {self.db_path}")
+            else:
+                self.db_path = "campaigner.db"
+        else:
+            self.db_path = db_path
+            
         self._init_db()
 
     def _init_db(self):
