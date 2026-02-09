@@ -1,0 +1,44 @@
+agents:
+  copywriter:
+    enabled: true
+    version: "1.0.0"
+    provider: "mock" # or "openai", "vertex"
+    model: "gpt-4-turbo"
+    temperature: 0.7
+    max_tokens: 500
+    fallback_enabled: true
+
+  brand_guardian:
+    enabled: true
+    version: "0.5.0"
+    provider: "mock"
+    strict_mode: true
+
+  legal_compliance:
+    enabled: true
+    version: "0.1.0"
+    provider: "mock"
+
+  designer:
+    enabled: true
+    version: "0.1.0"
+    provider: "mock"
+
+  campaign_qa:
+    enabled: true
+    version: "0.1.0"
+    provider: "mock"
+
+  crm_engineer:
+    enabled: true
+    version: "0.1.0"
+    provider: "mock"
+
+  audience_optimizer:
+    enabled: true
+    version: "0.1.0"
+    provider: "mock"
+
+security:
+  allowed_roles: ["admin", "editor"]
+  audit_level: "INFO"
